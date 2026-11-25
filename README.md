@@ -1,6 +1,6 @@
 # lumen-1_browser
 
-Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK und einer Oberfläche im Ryoku-Stil.
+Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK .
 
 ## Features
 
