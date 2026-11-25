@@ -4,7 +4,7 @@ Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK und einer O
 
 ## Features
 
-- Leichtgewichtig und schnell
+- Lightwiegth und schnell
 - Sauberes Design mit flüssigen Animationen
 - Farben passen sich dem gewählten Wallpaper an
 
