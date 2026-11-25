@@ -145,10 +145,6 @@ where
     labeled(&grid, "Deckkraft", 5);
     grid.attach(&opacity, 1, 5, 1, 1);
 
-    let adblock = gtk::CheckButton::with_label("Werbeblocker aktivieren");
-    adblock.set_active(settings.borrow().adblock);
-    grid.attach(&adblock, 1, 6, 1, 1);
-
     let profile_entry = gtk::Entry::new();
     profile_entry.set_text(&settings.borrow().profile);
     labeled(&grid, "Profil", 7);
@@ -224,7 +220,6 @@ where
             current.tab_shortcut = shortcut_entry.text().to_string();
             current.transparent = transparent.is_active();
             current.opacity = opacity.value();
-            current.adblock = adblock.is_active();
             if !profile.is_empty() && !current.profiles.contains(&profile) {
                 current.profiles.push(profile.clone());
             }

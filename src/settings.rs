@@ -129,7 +129,7 @@ impl Default for Settings {
             tab_shortcut: "<Control>L".to_string(),
             profile: "Standard".to_string(),
             profiles: vec!["Standard".to_string()],
-            adblock: true,
+            adblock: false,
             opacity: 1.0,
             transparent: false,
         }

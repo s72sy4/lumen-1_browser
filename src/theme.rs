@@ -388,29 +388,6 @@ body {{
     background-color: rgba(255, 255, 255, 0.10);
     color: {fg};
 }}
-.brand {{
-    position: fixed;
-    left: 48px;
-    bottom: 38px;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 5px;
-    text-transform: lowercase;
-    color: {fg};
-    opacity: 0.75;
-    animation: fadeIn 1100ms ease 220ms both;
-}}
-.brand::before {{
-    content: "";
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: {accent};
-    margin-right: 12px;
-    vertical-align: middle;
-    box-shadow: 0 0 12px {accent};
-}}
 @keyframes pageIn {{
     from {{ opacity: 0; }}
     to {{ opacity: 1; }}
@@ -435,7 +412,6 @@ body {{
 <div class="clock" id="clock"></div>
 <div class="date" id="date"></div>
 </div>
-<div class="brand">ryoku browser</div>
 <script>
 var days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 var months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];

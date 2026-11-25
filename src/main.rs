@@ -32,19 +32,20 @@ fn resolve_input(input: &str, engine: SearchEngine) -> String {
     if value.is_empty() {
         return String::new();
     }
-    if value.starts_with("http://")
-        || value.starts_with("https://")
-        || value.starts_with("file://")
-        || (value.contains('.') && !value.contains(' '))
-    {
-        if value.contains("://") {
-            value.to_string()
-        } else {
-            format!("https://{}", value)
+    if let Ok(url) = url::Url::parse(value) {
+        if url.has_host() {
+            return url.to_string();
         }
-    } else {
-        engine.query_url(value)
     }
+    if !value.contains(' ') && (value.contains('.') || value.starts_with("localhost")) {
+        let candidate = format!("https://{}", value);
+        if let Ok(url) = url::Url::parse(&candidate) {
+            if url.has_host() {
+                return url.to_string();
+            }
+        }
+    }
+    engine.query_url(value)
 }
 
 fn window_opacity(settings: &Settings) -> f64 {
