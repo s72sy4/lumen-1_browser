@@ -8,7 +8,7 @@ license=('MIT')
 depends=('gtk3' 'webkit2gtk-4.1')
 makedepends=('cargo' 'rust')
 source=("$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('cf4020fe8b609714c32444e37b6d8fc82ccebb7aa1ada4be255b98b80f7f2ae1')
 
 build() {
     cd "$srcdir/lumen-1_browser-$pkgver"

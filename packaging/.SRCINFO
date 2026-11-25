@@ -1,0 +1,15 @@
+pkgbase = lumen-browser
+	pkgdesc = Leichter GTK-Browser mit Ryoku-Optik für Arch Linux
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/s72sy4/lumen-1_browser
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	makedepends = rust
+	depends = gtk3
+	depends = webkit2gtk-4.1
+	source = https://github.com/s72sy4/lumen-1_browser/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = cf4020fe8b609714c32444e37b6d8fc82ccebb7aa1ada4be255b98b80f7f2ae1
+
+pkgname = lumen-browser
