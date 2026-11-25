@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=lumen-1_browser
+GenericName=Web Browser
+Comment=Schlanker GTK-Browser für Arch Linux
+Exec=lumen-1_browser
+Icon=lumen-1_browser
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true

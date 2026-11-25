@@ -1,0 +1,26 @@
+pkgname=lumen-browser
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Leichter GTK-Browser mit Ryoku-Optik für Arch Linux'
+arch=('x86_64')
+url='https://github.com/s72sy4/lumen-1_browser'
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1')
+makedepends=('cargo' 'rust')
+source=("$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$srcdir/lumen-1_browser-$pkgver"
+    cargo build --release --locked
+}
+
+package() {
+    cd "$srcdir/lumen-1_browser-$pkgver"
+    install -Dm755 target/release/lumen-1_browser "$pkgdir/usr/bin/lumen-1_browser"
+    install -Dm644 assets/lumen-1_browser.desktop "$pkgdir/usr/share/applications/lumen-1_browser.desktop"
+    install -Dm644 assets/lumen-1_browser.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/lumen-1_browser.svg"
+    install -d "$pkgdir/usr/share/lumen-1_browser"
+    cp -r assets/wallpapers "$pkgdir/usr/share/lumen-1_browser/wallpapers"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
