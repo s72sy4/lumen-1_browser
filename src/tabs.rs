@@ -132,7 +132,11 @@ impl TabManager {
                             .get(manager.active.get())
                             .and_then(|tab| tab.webview.uri());
                         if active_uri.as_deref() == Some(uri.as_ref()) {
-                            manager.url_entry.set_text(&uri);
+                            if uri.starts_with("lumen-1-browser://") {
+                                manager.url_entry.set_text("");
+                            } else {
+                                manager.url_entry.set_text(&uri);
+                            }
                         }
                     }
                 }

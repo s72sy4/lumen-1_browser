@@ -490,8 +490,7 @@ where
     let card = gtk::Box::new(gtk::Orientation::Vertical, 10);
     card.set_widget_name("lumen-1_browser-credits-card");
     card.set_margin(18);
-    card.set_halign(gtk::Align::Center);
-    card.set_valign(gtk::Align::Center);
+    card.set_halign(gtk::Align::Start);
 
     let icon_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("assets")
@@ -524,9 +523,8 @@ where
     links.pack_start(&repo, false, false, 0);
     card.pack_start(&links, false, false, 0);
 
-    credits_page.pack_start(&card, true, true, 0);
+    credits_page.pack_start(&card, false, false, 0);
     stack.add_titled(&credits_page, "credits", "Credits");
-
     let chooser_parent = window.clone();
     let entry_for_chooser = wallpaper_entry.clone();
     let settings_for_chooser = Rc::clone(&settings);

@@ -226,6 +226,7 @@ fn build_ui(app: &gtk::Application) {
         let entry = entry.clone();
         Rc::new(move |private: bool| {
             tabs.new_tab("lumen-1-browser://start", private);
+            entry.set_text("");
             entry.grab_focus();
         })
     };
