@@ -14,7 +14,7 @@ Ein schlanker Browser für Arch Linux und Wayland mit GTK3 und WebKitGTK.
 
 ![Startseite maximiert](assets/screenshots/startseite-gross.png)
 
-![Transparenz-Modus](assets/screenshots/transparenz.png) (Transparenzmodus)
+![Transparenz-Modus](assets/screenshots/transparenz.png) (Transparenzmodus 70% )
 
 
 ## Installation
