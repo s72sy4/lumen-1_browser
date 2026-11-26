@@ -1,12 +1,20 @@
 # lumen-1_browser
 
-Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK .
+Ein schlanker Browser für Arch Linux und Wayland mit GTK3 und WebKitGTK.
 
 ## Features
 
-- Lightwiegth und schnell
+- Leichtgewichtig und schnell
 - Sauberes Design mit flüssigen Animationen
 - Farben passen sich dem gewählten Wallpaper an
+
+## Screenshots
+
+![Startseite](assets/screenshots/startseite.png)
+
+![Startseite maximiert](assets/screenshots/startseite-gross.png)
+
+![Transparenz-Modus](assets/screenshots/transparenz.png)
 
 ## Installation
 
@@ -14,7 +22,7 @@ Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK .
 
 ```bash
 mkdir lumen-browser && cd lumen-browser
-curl -LO https://github.com/s72sy4/lumen-1_browser/releases/download/v0.1.2/aur-submission.tar.gz
+curl -LO https://github.com/s72sy4/lumen-1_browser/releases/download/v0.1.3/aur-submission.tar.gz
 tar -xzf aur-submission.tar.gz
 makepkg -si
 ```
@@ -40,6 +48,8 @@ Benötigt: `rust`/`cargo`, `gtk3`, `webkit2gtk-4.1`. Für `makepkg` zusätzlich 
 | `Strg+T` | Neuer Tab |
 | `Strg+W` | Tab schließen |
 | `Strg+K` | Adressleiste fokussieren |
+| `Strg+D` | Lesezeichen |
+| `Strg+Shift+N` | Privater Tab |
 | `Strg+,` | Einstellungen |
 | `Esc` | Overlays schließen |
 

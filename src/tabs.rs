@@ -4,7 +4,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
 use std::time::Duration;
 use webkit2gtk::{
-    HardwareAccelerationPolicy, Settings as WebSettings, WebViewExt, WebViewExtManual,
+    HardwareAccelerationPolicy, Settings as WebSettings, URIRequestExt, WebViewExt,
+    WebViewExtManual,
 };
 
 struct Tab {
@@ -22,18 +23,21 @@ pub struct TabManager {
     progress: gtk::ProgressBar,
     spinner: gtk::Spinner,
     private_badge: gtk::Label,
+    url_entry: gtk::Entry,
     settings: Rc<RefCell<Settings>>,
     data: Rc<RefCell<BrowserData>>,
     weak_self: RefCell<Weak<Self>>,
 }
 
 impl TabManager {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         container: gtk::Box,
         panel: gtk::Box,
         progress: gtk::ProgressBar,
         spinner: gtk::Spinner,
         private_badge: gtk::Label,
+        url_entry: gtk::Entry,
         settings: Rc<RefCell<Settings>>,
         data: Rc<RefCell<BrowserData>>,
     ) -> Rc<Self> {
@@ -50,6 +54,7 @@ impl TabManager {
             progress,
             spinner,
             private_badge,
+            url_entry,
             settings,
             data,
             weak_self: RefCell::new(Weak::new()),
@@ -70,6 +75,7 @@ impl TabManager {
     }
 
     pub fn new_tab(&self, url: &str, private: bool) {
+        let is_start = url == "lumen-1-browser://start";
         let content_manager = adblock::user_content_manager(self.settings.borrow().adblock);
         let webview = if private {
             let context = webkit2gtk::WebContext::new_ephemeral();
@@ -90,13 +96,46 @@ impl TabManager {
             .build();
         webview.set_settings(&web_settings);
 
+        let weak_for_create = self.weak_self.borrow().clone();
+        webview.connect_create(move |_, action| {
+            let manager = weak_for_create.upgrade()?;
+            let url = action
+                .request()
+                .and_then(|request| request.uri())
+                .map(|uri| uri.to_string())
+                .unwrap_or_else(|| "about:blank".to_string());
+            manager.new_tab(&url, false);
+            let view = {
+                let tabs = manager.tabs.borrow();
+                tabs.last()
+                    .map(|tab| tab.webview.clone().upcast::<gtk::Widget>())
+            };
+            view
+        });
+
         let data_for_history = Rc::clone(&self.data);
         let retried = Rc::new(Cell::new(false));
         let spinner_for_load = self.spinner.clone();
+        let weak_for_url = self.weak_self.borrow().clone();
         let adblock_enabled = self.settings.borrow().adblock;
         webview.connect_load_changed(move |view, event| {
             if event == webkit2gtk::LoadEvent::Started {
                 spinner_for_load.start();
+            }
+            if event == webkit2gtk::LoadEvent::Committed || event == webkit2gtk::LoadEvent::Finished
+            {
+                if let Some(uri) = view.uri() {
+                    if let Some(manager) = weak_for_url.upgrade() {
+                        let active_uri = manager
+                            .tabs
+                            .borrow()
+                            .get(manager.active.get())
+                            .and_then(|tab| tab.webview.uri());
+                        if active_uri.as_deref() == Some(uri.as_ref()) {
+                            manager.url_entry.set_text(&uri);
+                        }
+                    }
+                }
             }
             if event != webkit2gtk::LoadEvent::Finished {
                 return;
@@ -186,7 +225,16 @@ impl TabManager {
 
         let title_label = label.clone();
         let private_title = private;
+        let start_title = is_start;
         webview.connect_notify_local(Some("title"), move |view, _| {
+            if start_title {
+                title_label.set_label(if private_title {
+                    "Privater Tab"
+                } else {
+                    "Startseite"
+                });
+                return;
+            }
             if let Some(title) = view.title() {
                 let text = if private_title {
                     format!("Privat · {}", title)
@@ -200,7 +248,6 @@ impl TabManager {
             label.set_label("Privater Tab");
         }
 
-        let is_start = url == "lumen-1-browser://start";
         if is_start {
             let current = self.settings.borrow();
             let html = theme::start_page_html(

@@ -486,21 +486,45 @@ where
     stack.add_titled(&bookmarks_page, "bookmarks", "Lesezeichen");
 
     let credits_page = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    credits_page.pack_start(&section("Credits"), false, false, 0);
-    let made = gtk::Label::new(Some("Entwickelt von s72sy"));
-    made.set_xalign(0.0);
-    credits_page.pack_start(&made, false, false, 0);
+
+    let card = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    card.set_widget_name("lumen-1_browser-credits-card");
+    card.set_margin(18);
+    card.set_halign(gtk::Align::Center);
+    card.set_valign(gtk::Align::Center);
+
+    let icon_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("assets")
+        .join("lumen-1_browser.svg");
+    let icon = gtk::Image::from_file(icon_path);
+    icon.set_size_request(72, 72);
+    icon.set_widget_name("credits-icon");
+    card.pack_start(&icon, false, false, 0);
+
+    let name = gtk::Label::new(Some("lumen-1_browser"));
+    name.set_widget_name("credits-name");
+    card.pack_start(&name, false, false, 0);
+
+    let by = gtk::Label::new(Some("Entwickelt von s72sy"));
+    by.set_widget_name("credits-by");
+    card.pack_start(&by, false, false, 0);
+
     let stack_label = gtk::Label::new(Some("Rust · GTK · WebKitGTK · libsoup"));
-    stack_label.set_xalign(0.0);
-    stack_label.style_context().add_class("settings-hint");
-    credits_page.pack_start(&stack_label, false, false, 0);
+    stack_label.set_widget_name("credits-stack");
+    card.pack_start(&stack_label, false, false, 0);
+
+    let links = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    links.set_halign(gtk::Align::Center);
     let link = gtk::LinkButton::with_label("https://guns.lol/s72sy", "guns.lol/s72sy");
-    link.set_halign(gtk::Align::Start);
-    credits_page.pack_start(&link, false, false, 0);
+    link.set_widget_name("credits-link");
     let repo =
         gtk::LinkButton::with_label("https://github.com/s72sy4/lumen-1_browser", "GitHub-Repo");
-    repo.set_halign(gtk::Align::Start);
-    credits_page.pack_start(&repo, false, false, 0);
+    repo.set_widget_name("credits-link");
+    links.pack_start(&link, false, false, 0);
+    links.pack_start(&repo, false, false, 0);
+    card.pack_start(&links, false, false, 0);
+
+    credits_page.pack_start(&card, true, true, 0);
     stack.add_titled(&credits_page, "credits", "Credits");
 
     let chooser_parent = window.clone();

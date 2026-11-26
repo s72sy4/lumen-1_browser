@@ -213,10 +213,12 @@ fn build_ui(app: &gtk::Application) {
         progress,
         spinner,
         private_badge.clone(),
+        entry.clone(),
         Rc::clone(&settings),
         Rc::clone(&data),
     );
     tabs.new_tab("lumen-1-browser://start", false);
+    window.set_title("lumen-1_browser");
     entry.grab_focus();
 
     let new_tab = {

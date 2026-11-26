@@ -268,6 +268,38 @@ window {{
     padding: 7px 13px;
     transition: background-color 150ms ease;
 }}
+#lumen-1_browser-credits-card {{
+    background-color: {surface_solid};
+    border: 1px solid {border};
+    border-radius: 18px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+}}
+#credits-icon {{
+    margin-bottom: 4px;
+}}
+#credits-name {{
+    font-size: 24px;
+    font-weight: 700;
+    color: {fg};
+}}
+#credits-by {{
+    font-size: 13px;
+    color: {muted};
+}}
+#credits-stack {{
+    font-size: 11px;
+    color: {muted};
+    letter-spacing: 1px;
+    background-color: {accent_glow};
+    border-radius: 10px;
+    padding: 4px 10px;
+}}
+.credits-link {{
+    color: {accent};
+    border-radius: 10px;
+    padding: 6px 10px;
+    background-color: {field};
+}}
 #lumen-1_browser-settings entry {{
     border-radius: 10px;
     padding: 6px 10px;
