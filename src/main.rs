@@ -1,6 +1,7 @@
 mod adblock;
 mod clock;
 mod dialogs;
+mod history;
 mod passwords;
 mod settings;
 mod settings_page;
@@ -9,11 +10,16 @@ mod theme;
 
 use gdk::prelude::*;
 use gtk::prelude::*;
-use settings::{SearchEngine, Settings};
+use settings::{Language, SearchEngine, Settings};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::prctl(libc::PR_SET_NAME, c"lumen".as_ptr(), 0, 0, 0);
+    }
+
     let app = gtk::Application::builder()
         .application_id("de.lumen_1_browser.browser")
         .build();
@@ -48,6 +54,13 @@ fn resolve_input(input: &str, engine: SearchEngine) -> String {
     engine.query_url(value)
 }
 
+fn placeholder(language: Language) -> &'static str {
+    match language {
+        Language::Deutsch => "Suche oder URL eingeben …",
+        Language::English => "Search or enter URL …",
+    }
+}
+
 fn window_opacity(settings: &Settings) -> f64 {
     if settings.transparent {
         settings.opacity
@@ -75,6 +88,7 @@ fn shortcut_matches(accelerator: &str, event: &gdk::EventKey) -> bool {
 fn build_ui(app: &gtk::Application) {
     let settings = Rc::new(RefCell::new(Settings::load()));
     let vault = Rc::new(passwords::Vault::new());
+    let data = Rc::new(RefCell::new(history::BrowserData::load()));
 
     let window = gtk::ApplicationWindow::new(app);
     window.set_default_size(1280, 800);
@@ -116,20 +130,33 @@ fn build_ui(app: &gtk::Application) {
     let reload = button("↻");
     let new_tab_button = button("+");
     let tab_list_button = button("☰");
+    let private_badge = gtk::Label::new(Some("PRIVAT"));
+    private_badge.set_widget_name("lumen-1_browser-private-badge");
+    private_badge.hide();
+
+    let private_button = button("P");
+    private_button.set_tooltip_text(Some("Privater Tab"));
     let settings_button = button("⚙");
+
+    let spinner = gtk::Spinner::new();
+    spinner.set_widget_name("lumen-1_browser-spinner");
+    spinner.set_size_request(16, 16);
 
     let entry = gtk::Entry::new();
     entry.set_hexpand(true);
     entry.set_widget_name("lumen-1_browser-entry");
-    entry.set_placeholder_text(Some("Suche oder URL eingeben …"));
+    entry.set_placeholder_text(Some(placeholder(settings.borrow().language)));
 
     bar.pack_start(&back, false, false, 0);
     bar.pack_start(&forward, false, false, 0);
     bar.pack_start(&reload, false, false, 0);
+    bar.pack_start(&spinner, false, false, 0);
     bar.pack_start(&entry, true, true, 0);
+    bar.pack_start(&private_badge, false, false, 0);
     bar.pack_start(&clock::label(), false, false, 0);
     bar.pack_start(&tab_list_button, false, false, 0);
     bar.pack_start(&new_tab_button, false, false, 0);
+    bar.pack_start(&private_button, false, false, 0);
     bar.pack_start(&settings_button, false, false, 0);
 
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -180,8 +207,26 @@ fn build_ui(app: &gtk::Application) {
     stage.add_overlay(&settings_revealer);
     body.pack_start(&stage, true, true, 0);
 
-    let tabs = tabs::TabManager::new(content, panel, progress, Rc::clone(&settings));
-    tabs.new_tab("lumen-1-browser://start");
+    let tabs = tabs::TabManager::new(
+        content,
+        panel,
+        progress,
+        spinner,
+        private_badge.clone(),
+        Rc::clone(&settings),
+        Rc::clone(&data),
+    );
+    tabs.new_tab("lumen-1-browser://start", false);
+    entry.grab_focus();
+
+    let new_tab = {
+        let tabs = Rc::clone(&tabs);
+        let entry = entry.clone();
+        Rc::new(move |private: bool| {
+            tabs.new_tab("lumen-1-browser://start", private);
+            entry.grab_focus();
+        })
+    };
 
     let tabs_for_entry = Rc::clone(&tabs);
     let settings_for_entry = Rc::clone(&settings);
@@ -199,8 +244,10 @@ fn build_ui(app: &gtk::Application) {
     forward.connect_clicked(move |_| tabs_for_forward.go_forward());
     let tabs_for_reload = Rc::clone(&tabs);
     reload.connect_clicked(move |_| tabs_for_reload.reload());
-    let tabs_for_new = Rc::clone(&tabs);
-    new_tab_button.connect_clicked(move |_| tabs_for_new.new_tab("lumen-1-browser://start"));
+    let new_for_button = Rc::clone(&new_tab);
+    new_tab_button.connect_clicked(move |_| new_for_button(false));
+    let new_for_private = Rc::clone(&new_tab);
+    private_button.connect_clicked(move |_| new_for_private(true));
     let toggle_panel = {
         let revealer = panel_revealer.clone();
         Rc::new(move || {
@@ -231,11 +278,13 @@ fn build_ui(app: &gtk::Application) {
     });
     let settings_for_apply = Rc::clone(&settings);
     let window_for_apply = window.clone();
+    let entry_for_apply = entry.clone();
     let tabs_for_apply = Rc::clone(&tabs);
     let apply_settings = Rc::new(move || {
         {
             let current = settings_for_apply.borrow();
             theme::apply(current.wallpaper.as_deref());
+            entry_for_apply.set_placeholder_text(Some(placeholder(current.language)));
             window_for_apply.set_opacity(window_opacity(&current));
         }
         tabs_for_apply.refresh_start_page();
@@ -244,6 +293,7 @@ fn build_ui(app: &gtk::Application) {
         &window,
         Rc::clone(&settings),
         Rc::clone(&vault),
+        Rc::clone(&data),
         {
             let apply = Rc::clone(&apply_settings);
             move || apply()
@@ -252,22 +302,46 @@ fn build_ui(app: &gtk::Application) {
             let close = Rc::clone(&close_settings);
             move || close()
         },
+        {
+            let tabs_for_open = Rc::clone(&tabs);
+            let close = Rc::clone(&close_settings);
+            move |url: String| {
+                tabs_for_open.load_active(&url);
+                close();
+            }
+        },
     );
     settings_host.pack_start(&page, true, true, 0);
 
-    let open_for_button = Rc::clone(&open_settings);
-    settings_button.connect_clicked(move |_| open_for_button());
+    let toggle_settings = {
+        let open = Rc::clone(&open_settings);
+        let close = Rc::clone(&close_settings);
+        let revealer = settings_revealer.clone();
+        Rc::new(move || {
+            if revealer.reveals_child() {
+                close();
+            } else {
+                open();
+            }
+        })
+    };
+    let toggle_for_button = Rc::clone(&toggle_settings);
+    settings_button.connect_clicked(move |_| toggle_for_button());
 
     let toggle_for_action = Rc::clone(&toggle_panel);
     add_action(&window, "tab-list", move || toggle_for_action());
-    let tabs_for_action = Rc::clone(&tabs);
-    add_action(&window, "new-tab", move || {
-        tabs_for_action.new_tab("lumen-1-browser://start")
-    });
+    let new_for_action = Rc::clone(&new_tab);
+    add_action(&window, "new-tab", move || new_for_action(false));
+    let new_for_private = Rc::clone(&new_tab);
+    add_action(&window, "private-tab", move || new_for_private(true));
     let tabs_for_action = Rc::clone(&tabs);
     add_action(&window, "close-tab", move || tabs_for_action.close_active());
-    let open_for_action = Rc::clone(&open_settings);
-    add_action(&window, "settings", move || open_for_action());
+    let tabs_for_action = Rc::clone(&tabs);
+    add_action(&window, "bookmark", move || {
+        tabs_for_action.bookmark_active()
+    });
+    let toggle_for_action = Rc::clone(&toggle_settings);
+    add_action(&window, "settings", move || toggle_for_action());
     let window_for_focus = window.clone();
     let entry_for_focus = entry.clone();
     add_action(&window, "focus-url", move || {
@@ -291,17 +365,32 @@ fn build_ui(app: &gtk::Application) {
                 return glib::Propagation::Stop;
             }
         }
-        let configured = settings_for_keys.borrow().tab_shortcut.clone();
-        let name = if shortcut_matches(&configured, event) {
+        let keys = {
+            let current = settings_for_keys.borrow();
+            (
+                current.tab_shortcut.clone(),
+                current.new_tab_shortcut.clone(),
+                current.close_tab_shortcut.clone(),
+                current.url_shortcut.clone(),
+                current.bookmark_shortcut.clone(),
+                current.settings_shortcut.clone(),
+                current.private_shortcut.clone(),
+            )
+        };
+        let name = if shortcut_matches(&keys.0, event) {
             Some("tab-list")
-        } else if shortcut_matches("<Control>T", event) {
+        } else if shortcut_matches(&keys.1, event) {
             Some("new-tab")
-        } else if shortcut_matches("<Control>W", event) {
+        } else if shortcut_matches(&keys.2, event) {
             Some("close-tab")
-        } else if shortcut_matches("<Control>K", event) {
+        } else if shortcut_matches(&keys.3, event) {
             Some("focus-url")
-        } else if shortcut_matches("<Control>comma", event) {
+        } else if shortcut_matches(&keys.4, event) {
+            Some("bookmark")
+        } else if shortcut_matches(&keys.5, event) {
             Some("settings")
+        } else if shortcut_matches(&keys.6, event) {
+            Some("private-tab")
         } else {
             None
         };
@@ -315,6 +404,7 @@ fn build_ui(app: &gtk::Application) {
     });
 
     window.show_all();
+    private_badge.hide();
     settings_revealer.set_reveal_child(false);
     settings_revealer.hide();
     panel_revealer.set_reveal_child(false);

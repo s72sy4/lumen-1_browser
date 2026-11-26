@@ -5,6 +5,31 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
+pub enum Language {
+    #[default]
+    Deutsch,
+    English,
+}
+
+impl Language {
+    pub fn label(self) -> &'static str {
+        match self {
+            Language::Deutsch => "Deutsch",
+            Language::English => "English",
+        }
+    }
+
+    pub fn from_index(index: u32) -> Self {
+        if index == 1 {
+            Language::English
+        } else {
+            Language::Deutsch
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum SearchEngine {
     #[default]
     DuckDuckGo,
@@ -49,7 +74,20 @@ impl SearchEngine {
 pub struct Settings {
     pub search_engine: SearchEngine,
     pub wallpaper: Option<String>,
+    #[serde(default = "default_tab_shortcut")]
     pub tab_shortcut: String,
+    #[serde(default = "default_new_tab_shortcut")]
+    pub new_tab_shortcut: String,
+    #[serde(default = "default_close_tab_shortcut")]
+    pub close_tab_shortcut: String,
+    #[serde(default = "default_url_shortcut")]
+    pub url_shortcut: String,
+    #[serde(default = "default_settings_shortcut")]
+    pub settings_shortcut: String,
+    #[serde(default = "default_bookmark_shortcut")]
+    pub bookmark_shortcut: String,
+    #[serde(default = "default_private_shortcut")]
+    pub private_shortcut: String,
     pub profile: String,
     #[serde(default)]
     pub profiles: Vec<String>,
@@ -59,6 +97,10 @@ pub struct Settings {
     pub opacity: f64,
     #[serde(default)]
     pub transparent: bool,
+    #[serde(default)]
+    pub language: Language,
+    #[serde(default = "default_hardware")]
+    pub hardware_acceleration: bool,
 }
 
 fn default_true() -> bool {
@@ -67,6 +109,38 @@ fn default_true() -> bool {
 
 fn default_opacity() -> f64 {
     1.0
+}
+
+fn default_tab_shortcut() -> String {
+    "<Control>L".to_string()
+}
+
+fn default_new_tab_shortcut() -> String {
+    "<Control>T".to_string()
+}
+
+fn default_close_tab_shortcut() -> String {
+    "<Control>W".to_string()
+}
+
+fn default_url_shortcut() -> String {
+    "<Control>K".to_string()
+}
+
+fn default_settings_shortcut() -> String {
+    "<Control>comma".to_string()
+}
+
+fn default_bookmark_shortcut() -> String {
+    "<Control>D".to_string()
+}
+
+fn default_private_shortcut() -> String {
+    "<Control><Shift>N".to_string()
+}
+
+fn default_hardware() -> bool {
+    true
 }
 
 fn bundled_wallpaper_dirs() -> Vec<PathBuf> {
@@ -126,12 +200,20 @@ impl Default for Settings {
         Self {
             search_engine: SearchEngine::Startpage,
             wallpaper: default_wallpaper().map(|path| path.to_string_lossy().to_string()),
-            tab_shortcut: "<Control>L".to_string(),
+            tab_shortcut: default_tab_shortcut(),
+            new_tab_shortcut: default_new_tab_shortcut(),
+            close_tab_shortcut: default_close_tab_shortcut(),
+            url_shortcut: default_url_shortcut(),
+            settings_shortcut: default_settings_shortcut(),
+            bookmark_shortcut: default_bookmark_shortcut(),
+            private_shortcut: default_private_shortcut(),
             profile: "Standard".to_string(),
             profiles: vec!["Standard".to_string()],
             adblock: false,
             opacity: 1.0,
             transparent: false,
+            language: Language::Deutsch,
+            hardware_acceleration: true,
         }
     }
 }

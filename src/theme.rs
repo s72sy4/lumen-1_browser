@@ -1,4 +1,4 @@
-use crate::settings::SearchEngine;
+use crate::settings::Language;
 use gtk::prelude::*;
 use image::GenericImageView;
 use std::collections::HashMap;
@@ -146,6 +146,17 @@ window {{
     color: {accent};
     border-left: 2px solid {accent};
 }}
+#lumen-1_browser-tab-close {{
+    min-width: 0;
+    padding: 0 5px;
+    border-radius: 6px;
+    font-size: 12px;
+    background-color: transparent;
+}}
+#lumen-1_browser-tab-close:hover {{
+    background-color: {accent_glow};
+    color: {accent};
+}}
 #lumen-1_browser-tab-list row label {{
     font-size: 13px;
     font-weight: 500;
@@ -173,6 +184,14 @@ window {{
     border-radius: 1px;
     min-height: 2px;
 }}
+#lumen-1_browser-private-badge {{
+    color: {accent};
+    background-color: {accent_glow};
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+}}
 #lumen-1_browser-clock {{
     color: {muted};
     font-size: 13px;
@@ -189,6 +208,60 @@ window {{
 .settings-label {{
     font-weight: 600;
     color: {muted};
+}}
+.settings-section {{
+    font-size: 15px;
+    font-weight: 700;
+    color: {fg};
+}}
+.settings-hint {{
+    color: {muted};
+    font-size: 12px;
+}}
+.history-entry {{
+    font-size: 12px;
+}}
+#lumen-1_browser-settings-sidebar {{
+    background-color: {surface_solid};
+    border-radius: 12px;
+    padding: 6px;
+}}
+#lumen-1_browser-settings-sidebar button {{
+    background-color: transparent;
+    color: {fg};
+    border-radius: 10px;
+    padding: 8px 10px;
+    transition: background-color 160ms ease, color 160ms ease;
+}}
+#lumen-1_browser-settings-sidebar button:hover {{
+    background-color: {hover};
+}}
+#lumen-1_browser-settings-sidebar button:checked {{
+    background-color: {accent_glow};
+    color: {accent};
+}}
+#lumen-wallpaper-grid flowboxchild {{
+    background-color: transparent;
+    padding: 0;
+    border: none;
+}}
+.wallpaper-card {{
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 4px;
+    background-color: {field};
+    transition: border-color 180ms ease, background-color 180ms ease;
+}}
+.wallpaper-card:hover {{
+    background-color: {hover};
+    border-color: {accent};
+}}
+.wallpaper-card:checked {{
+    border-color: {accent};
+    background-color: {accent_glow};
+}}
+.wallpaper-card image {{
+    border-radius: 8px;
 }}
 #lumen-1_browser-settings button {{
     border-radius: 10px;
@@ -254,12 +327,11 @@ fn wallpaper_data_uri(path: &str) -> Option<String> {
     ))
 }
 
-pub fn start_page_html(wallpaper: Option<&str>, transparent: bool, engine: SearchEngine) -> String {
+pub fn start_page_html(wallpaper: Option<&str>, transparent: bool, language: Language) -> String {
     let p = palette(wallpaper);
     let hex = |c: (u8, u8, u8)| format!("#{:02x}{:02x}{:02x}", c.0, c.1, c.2);
     let scrim = format!("rgba({}, {}, {}, 0.55)", p.bg.0, p.bg.1, p.bg.2);
     let glow = format!("rgba({}, {}, {}, 0.16)", p.accent.0, p.accent.1, p.accent.2);
-    let accent_glow = format!("rgba({}, {}, {}, 0.22)", p.accent.0, p.accent.1, p.accent.2);
     let solid = hex(p.bg);
     let background = if transparent {
         "none".to_string()
@@ -277,16 +349,16 @@ pub fn start_page_html(wallpaper: Option<&str>, transparent: bool, engine: Searc
             ),
         }
     };
-    let (action, param) = engine.form();
-    let search_bg = format!(
-        "rgba({}, {}, {}, 0.72)",
-        p.surface.0, p.surface.1, p.surface.2
-    );
-    let search_focus = format!(
-        "rgba({}, {}, {}, 0.92)",
-        p.surface.0, p.surface.1, p.surface.2
-    );
-    let search_border = format!("rgba({}, {}, {}, 0.14)", p.fg.0, p.fg.1, p.fg.2);
+    let (days, months) = match language {
+        Language::Deutsch => (
+            r#"["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]"#,
+            r#"["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]"#,
+        ),
+        Language::English => (
+            r#"["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]"#,
+            r#"["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]"#,
+        ),
+    };
     format!(
         r#"<!DOCTYPE html>
 <html lang="de">
@@ -328,66 +400,6 @@ body {{
     text-transform: uppercase;
     color: {muted};
 }}
-.page-search {{
-    position: fixed;
-    top: 96px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(420px, calc(100% - 96px));
-    height: 40px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0 12px;
-    border-radius: 12px;
-    background-color: {search_bg};
-    border: 1px solid {search_border};
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
-    animation: rise 720ms cubic-bezier(.2, .8, .2, 1) 80ms both;
-    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
-}}
-.page-search:focus-within {{
-    background-color: {search_focus};
-    border-color: {accent};
-    box-shadow: 0 0 0 3px {accent_glow}, 0 12px 34px rgba(0, 0, 0, 0.22);
-}}
-.page-search .dot {{
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: {accent};
-    box-shadow: 0 0 12px {accent};
-    flex: none;
-}}
-.page-search input {{
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: 0;
-    outline: 0;
-    color: {fg};
-    font-size: 13px;
-    font-family: inherit;
-}}
-.page-search input::placeholder {{ color: {muted}; }}
-.page-search button {{
-    flex: none;
-    width: 24px;
-    height: 24px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: {muted};
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 150ms ease, color 150ms ease;
-}}
-.page-search button:hover {{
-    background-color: rgba(255, 255, 255, 0.10);
-    color: {fg};
-}}
 @keyframes pageIn {{
     from {{ opacity: 0; }}
     to {{ opacity: 1; }}
@@ -403,18 +415,13 @@ body {{
 </style>
 </head>
 <body>
-<form class="page-search" action="{action}" method="get">
-<span class="dot"></span>
-<input type="text" name="{param}" placeholder="Durchsuche das Netz" autocomplete="off" aria-label="Suche">
-<button type="submit" aria-label="Suchen"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg></button>
-</form>
 <div class="widget">
 <div class="clock" id="clock"></div>
 <div class="date" id="date"></div>
 </div>
 <script>
-var days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-var months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+var days = {days};
+var months = {months};
 function tick() {{
     var now = new Date();
     var h = String(now.getHours()).padStart(2, "0");
@@ -431,12 +438,7 @@ setInterval(tick, 10000);
         background = background,
         fg = hex(p.fg),
         muted = hex(mix(p.fg, p.bg, 0.42)),
-        accent = hex(p.accent),
-        accent_glow = accent_glow,
-        search_bg = search_bg,
-        search_focus = search_focus,
-        search_border = search_border,
-        action = action,
-        param = param,
+        days = days,
+        months = months,
     )
 }

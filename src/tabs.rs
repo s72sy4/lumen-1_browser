@@ -1,13 +1,17 @@
-use crate::{adblock, settings::Settings, theme};
+use crate::{adblock, history::BrowserData, settings::Settings, theme};
 use gtk::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
-use webkit2gtk::{HardwareAccelerationPolicy, Settings as WebSettings, WebViewExt};
+use std::time::Duration;
+use webkit2gtk::{
+    HardwareAccelerationPolicy, Settings as WebSettings, WebViewExt, WebViewExtManual,
+};
 
 struct Tab {
     webview: webkit2gtk::WebView,
     row: gtk::ListBoxRow,
     is_start: bool,
+    private: bool,
 }
 
 pub struct TabManager {
@@ -16,7 +20,11 @@ pub struct TabManager {
     container: gtk::Box,
     list: gtk::ListBox,
     progress: gtk::ProgressBar,
+    spinner: gtk::Spinner,
+    private_badge: gtk::Label,
     settings: Rc<RefCell<Settings>>,
+    data: Rc<RefCell<BrowserData>>,
+    weak_self: RefCell<Weak<Self>>,
 }
 
 impl TabManager {
@@ -24,7 +32,10 @@ impl TabManager {
         container: gtk::Box,
         panel: gtk::Box,
         progress: gtk::ProgressBar,
+        spinner: gtk::Spinner,
+        private_badge: gtk::Label,
         settings: Rc<RefCell<Settings>>,
+        data: Rc<RefCell<BrowserData>>,
     ) -> Rc<Self> {
         let list = gtk::ListBox::new();
         list.set_selection_mode(gtk::SelectionMode::Single);
@@ -37,7 +48,11 @@ impl TabManager {
             container,
             list,
             progress,
+            spinner,
+            private_badge,
             settings,
+            data,
+            weak_self: RefCell::new(Weak::new()),
         });
 
         let weak: Weak<Self> = Rc::downgrade(&manager);
@@ -50,46 +65,118 @@ impl TabManager {
             }
         });
 
+        *manager.weak_self.borrow_mut() = Rc::downgrade(&manager);
         manager
     }
 
-    pub fn new_tab(&self, url: &str) {
+    pub fn new_tab(&self, url: &str, private: bool) {
         let content_manager = adblock::user_content_manager(self.settings.borrow().adblock);
-        let webview = webkit2gtk::WebView::with_user_content_manager(&content_manager);
+        let webview = if private {
+            let context = webkit2gtk::WebContext::new_ephemeral();
+            webkit2gtk::WebView::new_with_context_and_user_content_manager(
+                &context,
+                &content_manager,
+            )
+        } else {
+            webkit2gtk::WebView::with_user_content_manager(&content_manager)
+        };
+        let policy = if self.settings.borrow().hardware_acceleration {
+            HardwareAccelerationPolicy::Always
+        } else {
+            HardwareAccelerationPolicy::Never
+        };
         let web_settings = WebSettings::builder()
-            .hardware_acceleration_policy(HardwareAccelerationPolicy::Never)
+            .hardware_acceleration_policy(policy)
             .build();
         webview.set_settings(&web_settings);
 
-        if self.settings.borrow().adblock {
-            webview.connect_load_changed(|view, event| {
-                if event == webkit2gtk::LoadEvent::Finished {
-                    let is_youtube = view
-                        .uri()
-                        .map(|uri| uri.contains("youtube.com"))
-                        .unwrap_or(false);
-                    if is_youtube {
-                        view.evaluate_javascript(
-                            adblock::youtube_cleaner_js(),
-                            None,
-                            None,
-                            None::<&gio::Cancellable>,
-                            |_| {},
-                        );
-                    }
+        let data_for_history = Rc::clone(&self.data);
+        let retried = Rc::new(Cell::new(false));
+        let spinner_for_load = self.spinner.clone();
+        let adblock_enabled = self.settings.borrow().adblock;
+        webview.connect_load_changed(move |view, event| {
+            if event == webkit2gtk::LoadEvent::Started {
+                spinner_for_load.start();
+            }
+            if event != webkit2gtk::LoadEvent::Finished {
+                return;
+            }
+            spinner_for_load.stop();
+            if adblock_enabled {
+                let is_youtube = view
+                    .uri()
+                    .map(|uri| uri.contains("youtube.com"))
+                    .unwrap_or(false);
+                if is_youtube {
+                    view.evaluate_javascript(
+                        adblock::youtube_cleaner_js(),
+                        None,
+                        None,
+                        None::<&gio::Cancellable>,
+                        |_| {},
+                    );
                 }
-            });
-        }
+            }
+            if !private {
+                if let Some(uri) = view.uri() {
+                    let title = view
+                        .title()
+                        .map(|title| title.to_string())
+                        .unwrap_or_else(|| uri.to_string());
+                    data_for_history
+                        .borrow_mut()
+                        .add_history(uri.to_string(), title);
+                }
+            }
+        });
 
         let label = gtk::Label::new(Some("Startseite"));
         label.set_xalign(0.0);
         label.set_ellipsize(gtk::pango::EllipsizeMode::End);
 
+        let close = gtk::Button::with_label("×");
+        close.set_widget_name("lumen-1_browser-tab-close");
+        close.set_tooltip_text(Some("Tab schließen"));
+
+        let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+        row_box.pack_start(&label, true, true, 0);
+        row_box.pack_start(&close, false, false, 0);
+
         let row = gtk::ListBoxRow::new();
         row.set_widget_name("lumen-1_browser-tab");
-        row.add(&label);
+        row.add(&row_box);
         row.show_all();
         self.list.add(&row);
+
+        let weak_for_close = self.weak_self.borrow().clone();
+        let row_for_close = row.clone();
+        close.connect_clicked(move |_| {
+            if let Some(manager) = weak_for_close.upgrade() {
+                let index = manager
+                    .tabs
+                    .borrow()
+                    .iter()
+                    .position(|tab| tab.row == row_for_close);
+                if let Some(index) = index {
+                    manager.close_tab(index);
+                }
+            }
+        });
+
+        webview.connect_load_failed(move |view, _, uri, error| {
+            let message = error.message();
+            if !retried.get()
+                && (message.contains("unterbrochen") || message.contains("interrupted"))
+            {
+                retried.set(true);
+                let view = view.clone();
+                let uri = uri.to_string();
+                glib::timeout_add_local_once(Duration::from_millis(200), move || {
+                    view.load_uri(&uri);
+                });
+            }
+            false
+        });
 
         let progress_for_load = self.progress.clone();
         webview.connect_estimated_load_progress_notify(move |view| {
@@ -98,11 +185,20 @@ impl TabManager {
         });
 
         let title_label = label.clone();
+        let private_title = private;
         webview.connect_notify_local(Some("title"), move |view, _| {
             if let Some(title) = view.title() {
-                title_label.set_label(&title);
+                let text = if private_title {
+                    format!("Privat · {}", title)
+                } else {
+                    title.to_string()
+                };
+                title_label.set_label(&text);
             }
         });
+        if private {
+            label.set_label("Privater Tab");
+        }
 
         let is_start = url == "lumen-1-browser://start";
         if is_start {
@@ -110,7 +206,7 @@ impl TabManager {
             let html = theme::start_page_html(
                 current.wallpaper.as_deref(),
                 current.transparent,
-                current.search_engine,
+                current.language,
             );
             webview.load_html(&html, Some("lumen-1-browser://start"));
         } else {
@@ -120,6 +216,7 @@ impl TabManager {
             webview,
             row,
             is_start,
+            private,
         });
         let index = self.tabs.borrow().len() - 1;
         self.set_active(index);
@@ -134,12 +231,16 @@ impl TabManager {
             self.container.pack_start(&tab.webview, true, true, 0);
             self.container.show_all();
             self.list.select_row(Some(&tab.row));
+            if tab.private {
+                self.private_badge.show();
+            } else {
+                self.private_badge.hide();
+            }
             self.active.set(index);
         }
     }
 
-    pub fn close_active(&self) {
-        let index = self.active.get();
+    pub fn close_tab(&self, index: usize) {
         {
             let mut tabs = self.tabs.borrow_mut();
             if index >= tabs.len() {
@@ -153,10 +254,14 @@ impl TabManager {
             for child in self.container.children() {
                 self.container.remove(&child);
             }
-            self.new_tab("lumen-1-browser://start");
+            self.new_tab("lumen-1-browser://start", false);
         } else {
             self.set_active(index.min(count - 1));
         }
+    }
+
+    pub fn close_active(&self) {
+        self.close_tab(self.active.get());
     }
 
     pub fn load_active(&self, url: &str) {
@@ -183,6 +288,22 @@ impl TabManager {
         }
     }
 
+    pub fn bookmark_active(&self) {
+        if let Some(tab) = self.tabs.borrow().get(self.active.get()) {
+            if tab.private {
+                return;
+            }
+            if let Some(uri) = tab.webview.uri() {
+                let title = tab
+                    .webview
+                    .title()
+                    .map(|title| title.to_string())
+                    .unwrap_or_else(|| uri.to_string());
+                self.data.borrow_mut().add_bookmark(uri.to_string(), title);
+            }
+        }
+    }
+
     pub fn refresh_start_page(&self) {
         let current = self.settings.borrow();
         let tabs = self.tabs.borrow();
@@ -191,7 +312,7 @@ impl TabManager {
                 let html = theme::start_page_html(
                     current.wallpaper.as_deref(),
                     current.transparent,
-                    current.search_engine,
+                    current.language,
                 );
                 tab.webview
                     .load_html(&html, Some("lumen-1-browser://start"));

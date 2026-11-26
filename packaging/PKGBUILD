@@ -1,5 +1,5 @@
 pkgname=lumen-browser
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 pkgdesc='Leichter GTK-Browser mit Ryoku-Optik für Arch Linux'
 arch=('x86_64')

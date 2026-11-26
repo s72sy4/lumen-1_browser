@@ -14,7 +14,7 @@ Ein schlanker Browser für Arch Linux und Wayland mit GTK3/WebKitGTK .
 
 ```bash
 mkdir lumen-browser && cd lumen-browser
-curl -LO https://github.com/s72sy4/lumen-1_browser/releases/download/v0.1.1/aur-submission.tar.gz
+curl -LO https://github.com/s72sy4/lumen-1_browser/releases/download/v0.1.2/aur-submission.tar.gz
 tar -xzf aur-submission.tar.gz
 makepkg -si
 ```

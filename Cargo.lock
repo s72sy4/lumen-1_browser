@@ -1219,7 +1219,7 @@ dependencies = [
 
 [[package]]
 name = "lumen-1_browser"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1228,10 +1228,12 @@ dependencies = [
  "chrono",
  "dirs",
  "gdk",
+ "gdk-pixbuf",
  "gio",
  "glib",
  "gtk",
  "image",
+ "libc",
  "rand_core 0.6.4",
  "serde",
  "serde_json",
